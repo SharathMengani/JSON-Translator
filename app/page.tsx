@@ -1,103 +1,169 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useRef, useState } from "react";
+
+const languageOptions = [
+  { name: "Amharic", code: "am" },
+  { name: "Arabic", code: "ar" },
+  { name: "Chinese (Simplified)", code: "zh-CN" },
+  { name: "Chinese (Traditional)", code: "zh-TW" },
+  { name: "Czech", code: "cs" },
+  { name: "Danish", code: "da" },
+  { name: "Dutch", code: "nl" },
+  { name: "English", code: "en" },
+  { name: "Finnish", code: "fi" },
+  { name: "French", code: "fr" },
+  { name: "German", code: "de" },
+  { name: "Greek", code: "el" },
+  { name: "Hausa", code: "ha" },
+  { name: "Hindi", code: "hi" },
+  { name: "Hungarian", code: "hu" },
+  { name: "Igbo", code: "ig" },
+  { name: "Indonesian", code: "id" },
+  { name: "Italian", code: "it" },
+  { name: "Japanese", code: "ja" },
+  { name: "Korean", code: "ko" },
+  { name: "Nepali", code: "ne" },
+  { name: "Norwegian", code: "no" },
+  { name: "Polish", code: "pl" },
+  { name: "Portuguese", code: "pt" },
+  { name: "Romanian", code: "ro" },
+  { name: "Russian", code: "ru" },
+  { name: "Sinhala", code: "si" },
+  { name: "Slovak", code: "sk" },
+  { name: "Somali", code: "so" },
+  { name: "Spanish", code: "es" },
+  { name: "Swahili", code: "sw" },
+  { name: "Swedish", code: "sv" },
+  { name: "Thai", code: "th" },
+  { name: "Turkish", code: "tr" },
+  { name: "Ukrainian", code: "uk" },
+  { name: "Urdu", code: "ur" },
+  { name: "Vietnamese", code: "vi" },
+  { name: "Yoruba", code: "yo" },
+  { name: "Zulu", code: "zu" }
+];
+
+export default function HomePage() {
+  const [languageCode, setLanguageCode] = useState("zh-CN");
+  const [customLangCode, setCustomLangCode] = useState("");
+  const [progress, setProgress] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedData, setTranslatedData] = useState<object | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) return alert("Please upload a JSON file.");
+
+    const text = await file.text();
+    const json = JSON.parse(text);
+    const keys = Object.keys(json);
+    const result: Record<string, string> = {};
+
+    const selectedLang = customLangCode.trim() !== "" ? customLangCode.trim() : languageCode;
+
+    setIsTranslating(true);
+    setProgress(`Translating ${keys.length} keys to ${selectedLang}...`);
+
+    try {
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const value = json[key];
+        if (typeof value === "string") {
+          try {
+            const res = await fetch(
+              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${selectedLang}&dt=t&q=${encodeURIComponent(value)}`
+            );
+            const data = await res.json();
+            result[key] = data[0][0][0];
+          } catch (err) {
+            console.warn(`Translation failed for key: ${key}`);
+            result[key] = value;
+          }
+        } else {
+          result[key] = value;
+        }
+        setProgress(`Translation: ${Math.round(((i + 1) / keys.length) * 100)}% (${i + 1}/${keys.length})`);
+      }
+
+      setTranslatedData(result);
+      setProgress(`✅ Translated ${Object.keys(result).length} keys successfully.`);
+    } catch (err) {
+      console.error("Translation error:", err);
+      setProgress("❌ Translation failed");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!translatedData) return;
+
+    const selectedLang = customLangCode.trim() !== "" ? customLangCode.trim() : languageCode;
+
+    const blob = new Blob([JSON.stringify(translatedData, null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `translated_${selectedLang}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="p-8 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">🌐 Translate JSON Keys</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      <label className="block mb-2 font-semibold">Select Language:</label>
+      <select
+        value={languageCode}
+        onChange={(e) => setLanguageCode(e.target.value)}
+        className="border p-2 w-full mb-4"
+      >
+        {languageOptions.map((lang) => (
+          <option key={lang.code} value={lang.code}>
+            {lang.name} ({lang.code})
+          </option>
+        ))}
+      </select>
+
+      <label className="block mb-2 font-semibold">Or enter custom language code:</label>
+      <input
+        type="text"
+        placeholder="e.g., haw, ps, lo"
+        className="border p-2 w-full mb-4"
+        value={customLangCode}
+        onChange={(e) => setCustomLangCode(e.target.value)}
+      />
+
+      <input
+        type="file"
+        accept=".json"
+        ref={fileInputRef}
+        className="mb-4"
+      />
+
+      <div className="flex gap-4">
+        <button
+          onClick={handleFileUpload}
+          disabled={isTranslating}
+          className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {isTranslating ? "Translating..." : "Translate"}
+        </button>
+        <button
+          onClick={handleDownload}
+          disabled={!translatedData}
+          className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          Download
+        </button>
+      </div>
+
+      {progress && <p className="mt-4">{progress}</p>}
+    </main>
   );
 }
