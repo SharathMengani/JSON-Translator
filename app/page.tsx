@@ -46,7 +46,7 @@ const languageOptions = [
 ];
 
 export default function HomePage() {
-  const [languageCode, setLanguageCode] = useState("zh-CN");
+  const [languageCode, setLanguageCode] = useState("en");
   const [customLangCode, setCustomLangCode] = useState("");
   const [progress, setProgress] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
