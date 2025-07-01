@@ -32,6 +32,7 @@ const languageOptions = [
   { name: "Russian", code: "ru" },
   { name: "Sinhala", code: "si" },
   { name: "Slovak", code: "sk" },
+  { name: "Shona", code: "sn" },
   { name: "Somali", code: "so" },
   { name: "Spanish", code: "es" },
   { name: "Swahili", code: "sw" },
@@ -52,6 +53,8 @@ export default function HomePage() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedData, setTranslatedData] = useState<object | null>(null);
   const [selectedLangName, setSelectedLangName] = useState("Chinese (Simplified)");
+  const [manualJson, setManualJson] = useState("");
+  const [uploadedJson, setUploadedJson] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,13 +73,18 @@ export default function HomePage() {
     }
   }, [languageCode]);
 
-  const handleFileUpload = async () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) return alert("Please upload a JSON file.");
+  const handleManualTranslate = async () => {
+    const jsonSource = manualJson.trim() || uploadedJson.trim();
+    if (!jsonSource) return alert("Please paste or upload some JSON.");
 
-    const text = await file.text();
-    const json = JSON.parse(text);
-    const entries = Object.entries(json); // [key, value] pairs
+    let json;
+    try {
+      json = JSON.parse(jsonSource);
+    } catch (err) {
+      return alert("Invalid JSON format.");
+    }
+
+    const entries = Object.entries(json);
     const selectedLang = customLangCode.trim() || languageCode;
 
     setIsTranslating(true);
@@ -89,7 +97,7 @@ export default function HomePage() {
 
           try {
             const res = await fetch(
-              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${selectedLang}&dt=t&q=${encodeURIComponent(value)}`
+              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${selectedLang}&dt=t&q=${encodeURIComponent(value)}`
             );
             const data = await res.json();
             setProgress(`Translation: ${Math.round(((i + 1) / entries.length) * 100)}% (${i + 1}/${entries.length})`);
@@ -100,7 +108,6 @@ export default function HomePage() {
         })
       );
 
-      // Convert back to object (in same order)
       const result = Object.fromEntries(translatedEntries);
       setTranslatedData(result);
       setProgress(`✅ Translated ${entries.length} keys successfully.`);
@@ -112,11 +119,8 @@ export default function HomePage() {
     }
   };
 
-
-
   const handleDownload = () => {
     if (!translatedData) return;
-
     const selectedLang = customLangCode.trim() !== "" ? customLangCode.trim() : languageCode;
 
     const blob = new Blob([JSON.stringify(translatedData, null, 2)], {
@@ -128,7 +132,7 @@ export default function HomePage() {
     a.download = `translated_${selectedLang}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    setTranslatedData(null)
+    setTranslatedData(null);
   };
 
   return (
@@ -144,7 +148,11 @@ export default function HomePage() {
             <label className="block text-sm mb-1 font-medium">Select Language</label>
             <select
               value={languageCode}
-              onChange={(e) => { setLanguageCode(e.target.value); setIsTranslating(false); setTranslatedData(null) }}
+              onChange={(e) => {
+                setLanguageCode(e.target.value);
+                setIsTranslating(false);
+                setTranslatedData(null);
+              }}
               className="w-full rounded-lg bg-slate-700 text-white border border-slate-600 p-2 focus:ring-2 focus:ring-indigo-500"
             >
               {languageOptions.map((lang) => (
@@ -161,14 +169,22 @@ export default function HomePage() {
               type="text"
               placeholder="e.g., haw, ps, lo"
               value={customLangCode}
-              onChange={(e) => { setCustomLangCode(e.target.value); setIsTranslating(false); setTranslatedData(null) }}
+              onChange={(e) => {
+                setCustomLangCode(e.target.value);
+                setIsTranslating(false);
+                setTranslatedData(null);
+              }}
               className="w-full rounded-lg bg-slate-700 text-white border border-slate-600 p-2 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
 
-        <p className="text-center text-sm text-slate-300 mt-4">🔤 Selected Language: <span className="font-semibold text-indigo-300">{selectedLangName} ({customLangCode})</span></p>
-
+        <p className="text-center text-sm text-slate-300 mt-4">
+          🔤 Selected Language:{" "}
+          <span className="font-semibold text-indigo-300">
+            {selectedLangName} ({customLangCode})
+          </span>
+        </p>
         <div className="mt-8">
           <label className="block mb-2 font-medium">Upload JSON File</label>
           <div className="flex items-center gap-3 bg-slate-700 p-3 rounded-lg border border-slate-600 cursor-pointer hover:border-indigo-500 transition">
@@ -177,14 +193,70 @@ export default function HomePage() {
               type="file"
               accept=".json"
               ref={fileInputRef}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  try {
+                    const text = event.target?.result as string;
+                    JSON.parse(text); // validate JSON
+                    setUploadedJson(text);
+                    setManualJson(""); // Clear manual input
+                  } catch {
+                    alert("Invalid JSON file.");
+                  }
+                };
+                reader.readAsText(file);
+              }}
               className="text-white w-full bg-transparent outline-none"
             />
           </div>
         </div>
+        <div className="grid-cols-2 grid gap-3">
+          <div className="mt-6">
+            <label className="block mb-2 font-medium">Or Paste JSON Here</label>
+            <textarea
+              value={manualJson}
+              onChange={(e) => {
+                setManualJson(e.target.value);
+                setUploadedJson(""); // Clear uploaded file content
+                if (fileInputRef.current) fileInputRef.current.value = ""; // Optional: visually reset file input
+              }}
+              placeholder=""
+              rows={10}
+              className="w-full bg-slate-700 text-white border border-slate-600 p-3 rounded-lg font-mono text-sm focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+
+
+
+          <div className="mt-6">
+            <label className="block mb-2 font-medium">Translated JSON Output</label>
+            <textarea
+              value={JSON.stringify(translatedData, null, 2)}
+              readOnly
+              rows={10}
+              className="w-full bg-slate-700 text-white border border-slate-600 p-3 rounded-lg font-mono text-sm focus:ring-2 focus:ring-indigo-500"
+            />
+
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(JSON.stringify(translatedData, null, 2));
+              }}
+              className="mt-2 bg-indigo-500 hover:bg-indigo-400 px-4 py-1 rounded text-sm text-white font-medium"
+            >
+              📋 Copy to Clipboard
+            </button>
+          </div>
+        </div>
+
 
         <div className="flex flex-col sm:flex-row gap-4 mt-8">
           <button
-            onClick={handleFileUpload}
+            onClick={handleManualTranslate}
             disabled={isTranslating}
             className="w-full bg-indigo-600 hover:bg-indigo-500 transition px-4 py-2 rounded-lg text-white font-semibold disabled:opacity-50 shadow"
           >
