@@ -85,24 +85,31 @@ export default function HomePage() {
     setProgress(`Translating ${keys.length} keys to ${selectedLang}...`);
 
     try {
-      for (let i = 0; i < keys.length; i++) {
-        const key = keys[i];
+      const orderedResult = keys.reduce(async (accPromise, key, index) => {
+        const acc = await accPromise as Record<string, string>;
         const value = json[key];
+
+        let translated = value;
         if (typeof value === "string") {
           try {
             const res = await fetch(
               `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${selectedLang}&dt=t&q=${encodeURIComponent(value)}`
             );
             const data = await res.json();
-            result[key] = data[0][0][0];
+            translated = data[0][0][0];
           } catch {
-            result[key] = value;
+            // fallback to original
           }
-        } else {
-          result[key] = value;
         }
-        setProgress(`Translation: ${Math.round(((i + 1) / keys.length) * 100)}% (${i + 1}/${keys.length})`);
-      }
+
+        acc[key] = translated;
+        setProgress(`Translation: ${Math.round(((index + 1) / keys.length) * 100)}% (${index + 1}/${keys.length})`);
+        return acc;
+      }, Promise.resolve({} as Record<string, string>));
+
+      const result = await orderedResult;
+      setTranslatedData(result);
+
 
       setTranslatedData(result);
       setProgress(`✅ Translated ${Object.keys(result).length} keys successfully.`);
@@ -113,6 +120,7 @@ export default function HomePage() {
       setIsTranslating(false);
     }
   };
+
 
   const handleDownload = () => {
     if (!translatedData) return;
@@ -128,6 +136,7 @@ export default function HomePage() {
     a.download = `translated_${selectedLang}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setTranslatedData(null)
   };
 
   return (
@@ -143,7 +152,7 @@ export default function HomePage() {
             <label className="block text-sm mb-1 font-medium">Select Language</label>
             <select
               value={languageCode}
-              onChange={(e) => setLanguageCode(e.target.value)}
+              onChange={(e) => { setLanguageCode(e.target.value); setIsTranslating(false); setTranslatedData(null) }}
               className="w-full rounded-lg bg-slate-700 text-white border border-slate-600 p-2 focus:ring-2 focus:ring-indigo-500"
             >
               {languageOptions.map((lang) => (
@@ -160,7 +169,7 @@ export default function HomePage() {
               type="text"
               placeholder="e.g., haw, ps, lo"
               value={customLangCode}
-              onChange={(e) => setCustomLangCode(e.target.value)}
+              onChange={(e) => { setCustomLangCode(e.target.value); setIsTranslating(false); setTranslatedData(null) }}
               className="w-full rounded-lg bg-slate-700 text-white border border-slate-600 p-2 focus:ring-2 focus:ring-indigo-500"
             />
           </div>
