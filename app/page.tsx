@@ -76,43 +76,34 @@ export default function HomePage() {
 
     const text = await file.text();
     const json = JSON.parse(text);
-    const keys = Object.keys(json);
-    const result: Record<string, string> = {};
-
-    const selectedLang = customLangCode.trim() !== "" ? customLangCode.trim() : languageCode;
+    const entries = Object.entries(json); // [key, value] pairs
+    const selectedLang = customLangCode.trim() || languageCode;
 
     setIsTranslating(true);
-    setProgress(`Translating ${keys.length} keys to ${selectedLang}...`);
+    setProgress(`Translating ${entries.length} keys to ${selectedLang}...`);
 
     try {
-      const orderedResult = keys.reduce(async (accPromise, key, index) => {
-        const acc = await accPromise as Record<string, string>;
-        const value = json[key];
+      const translatedEntries = await Promise.all(
+        entries.map(async ([key, value], i) => {
+          if (typeof value !== "string") return [key, value];
 
-        let translated = value;
-        if (typeof value === "string") {
           try {
             const res = await fetch(
               `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${selectedLang}&dt=t&q=${encodeURIComponent(value)}`
             );
             const data = await res.json();
-            translated = data[0][0][0];
+            setProgress(`Translation: ${Math.round(((i + 1) / entries.length) * 100)}% (${i + 1}/${entries.length})`);
+            return [key, data[0][0][0]];
           } catch {
-            // fallback to original
+            return [key, value]; // fallback to original
           }
-        }
+        })
+      );
 
-        acc[key] = translated;
-        setProgress(`Translation: ${Math.round(((index + 1) / keys.length) * 100)}% (${index + 1}/${keys.length})`);
-        return acc;
-      }, Promise.resolve({} as Record<string, string>));
-
-      const result = await orderedResult;
+      // Convert back to object (in same order)
+      const result = Object.fromEntries(translatedEntries);
       setTranslatedData(result);
-
-
-      setTranslatedData(result);
-      setProgress(`✅ Translated ${Object.keys(result).length} keys successfully.`);
+      setProgress(`✅ Translated ${entries.length} keys successfully.`);
     } catch (err) {
       console.error("Translation error:", err);
       setProgress("❌ Translation failed");
@@ -120,6 +111,7 @@ export default function HomePage() {
       setIsTranslating(false);
     }
   };
+
 
 
   const handleDownload = () => {
