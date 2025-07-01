@@ -214,7 +214,7 @@ export default function HomePage() {
             />
           </div>
         </div>
-        <div className="grid-cols-2 grid gap-3">
+        <div className="sm:grid-cols-2 grid gap-3">
           <div className="mt-6">
             <label className="block mb-2 font-medium">Or Paste JSON Here</label>
             <textarea
@@ -224,7 +224,7 @@ export default function HomePage() {
                 setUploadedJson(""); // Clear uploaded file content
                 if (fileInputRef.current) fileInputRef.current.value = ""; // Optional: visually reset file input
               }}
-              placeholder=""
+              placeholder="Enter JSON Data..."
               rows={10}
               className="w-full bg-slate-700 text-white border border-slate-600 p-3 rounded-lg font-mono text-sm focus:ring-2 focus:ring-indigo-500"
             />
@@ -236,7 +236,7 @@ export default function HomePage() {
           <div className="mt-6">
             <label className="block mb-2 font-medium">Translated JSON Output</label>
             <textarea
-              value={JSON.stringify(translatedData, null, 2)}
+              value={translatedData ? JSON.stringify(translatedData, null, 2) : "No data"}
               readOnly
               rows={10}
               className="w-full bg-slate-700 text-white border border-slate-600 p-3 rounded-lg font-mono text-sm focus:ring-2 focus:ring-indigo-500"
