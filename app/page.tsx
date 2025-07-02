@@ -72,52 +72,90 @@ export default function HomePage() {
       setSelectedLangName(match.name);
     }
   }, [languageCode]);
-
-  const handleManualTranslate = async () => {
-    const jsonSource = manualJson.trim() || uploadedJson.trim();
-    if (!jsonSource) return alert("Please paste or upload some JSON.");
-
-    let json;
-    try {
-      json = JSON.parse(jsonSource);
-    } catch (err) {
-      return alert("Invalid JSON format.");
-    }
-
-    const entries = Object.entries(json);
-    const selectedLang = customLangCode.trim() || languageCode;
-
-    setIsTranslating(true);
-    setProgress(`Translating ${entries.length} keys to ${selectedLang}...`);
-
-    try {
-      const translatedEntries = await Promise.all(
-        entries.map(async ([key, value], i) => {
-          if (typeof value !== "string") return [key, value];
-
-          try {
-            const res = await fetch(
-              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${selectedLang}&dt=t&q=${encodeURIComponent(value)}`
-            );
-            const data = await res.json();
-            setProgress(`Translation: ${Math.round(((i + 1) / entries.length) * 100)}% (${i + 1}/${entries.length})`);
-            return [key, data[0][0][0]];
-          } catch {
-            return [key, value]; // fallback to original
-          }
+  async function translateNestedJson(
+    obj: any,
+    targetLang: string,
+    updateProgress: (count: number) => void,
+    total: number,
+    countRef: { count: number }
+  ): Promise<any> {
+    if (typeof obj === 'string') {
+      try {
+        const res = await fetch(
+          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(obj)}`
+        );
+        const data = await res.json();
+        countRef.count += 1;
+        updateProgress(countRef.count);
+        return data[0][0][0];
+      } catch {
+        countRef.count += 1;
+        updateProgress(countRef.count);
+        return obj;
+      }
+    } else if (Array.isArray(obj)) {
+      const results = await Promise.all(
+        obj.map((item) => translateNestedJson(item, targetLang, updateProgress, total, countRef))
+      );
+      return results;
+    } else if (typeof obj === 'object' && obj !== null) {
+      const entries = await Promise.all(
+        Object.entries(obj).map(async ([key, value]) => {
+          const translatedValue = await translateNestedJson(value, targetLang, updateProgress, total, countRef);
+          return [key, translatedValue];
         })
       );
+      return Object.fromEntries(entries);
+    }
+    return obj;
+  }
+  const countTotalStrings = (obj: Record<string, any>): number => {
+    return Object.values(obj).reduce((acc: number, value) => {
+      if (typeof value === "string") return acc + 1;
+      if (typeof value === "object" && value !== null) return acc + countTotalStrings(value);
+      return acc;
+    }, 0);
+  };
 
-      const result = Object.fromEntries(translatedEntries);
+  const handleManualTranslate = async () => {
+    const source = manualJson.trim() || uploadedJson.trim();
+
+    if (!source) {
+      alert('Please upload or paste valid JSON first.');
+      return;
+    }
+
+    let parsedJson: any;
+    try {
+      parsedJson = JSON.parse(source);
+    } catch {
+      alert('The JSON provided is invalid. Please fix it and try again.');
+      return;
+    }
+
+    const selectedLang = customLangCode.trim() || languageCode;
+    const total = countTotalStrings(parsedJson);
+    const countRef = { count: 0 };
+
+    const updateProgress = (count: number) => {
+      setProgress(`Translation: ${Math.round((count / total) * 100)}% (${count}/${total})`);
+    };
+
+    setIsTranslating(true);
+    setProgress(`Translating ${total} string values to ${selectedLang}...`);
+
+    try {
+      const result = await translateNestedJson(parsedJson, selectedLang, updateProgress, total, countRef);
       setTranslatedData(result);
-      setProgress(`✅ Translated ${entries.length} keys successfully.`);
+      setProgress(`✅ Translated ${total} strings successfully.`);
     } catch (err) {
-      console.error("Translation error:", err);
-      setProgress("❌ Translation failed");
+      console.error('Translation error:', err);
+      setProgress('❌ Translation failed');
     } finally {
       setIsTranslating(false);
     }
   };
+
 
   const handleDownload = () => {
     if (!translatedData) return;
