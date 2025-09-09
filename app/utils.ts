@@ -39,5 +39,5 @@ export const languageOptions = [
   { name: "Vietnamese", code: "vi" },
   { name: "Yoruba", code: "yo" },
   { name: "Zulu", code: "zu" },
-  { name: "Others", code: "others" }
+  { name: "Others", code: "" }
 ];

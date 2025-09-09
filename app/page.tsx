@@ -157,7 +157,7 @@ export default function HomePage() {
       <div className="bg-slate-800/90 p-8 rounded-3xl shadow-[0_0_25px_rgba(0,0,0,0.4)] w-full max-w-3xl border border-slate-700 backdrop-blur-sm">
         <div className="flex items-center justify-center gap-3 mb-8">
           <GlobeAltIcon className="w-9 h-9 text-indigo-400" />
-          <h1 className="text-4xl font-black text-indigo-300">Global JSON Translator</h1>
+          <h1 className="text-4xl font-black text-indigo-300">JSON Translator</h1>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-6">
