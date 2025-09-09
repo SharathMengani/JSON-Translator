@@ -2,49 +2,9 @@
 
 import { useRef, useState, useEffect } from "react";
 import { ArrowDownTrayIcon, GlobeAltIcon, DocumentArrowUpIcon } from "@heroicons/react/24/outline";
+import { languageOptions } from "./utils";
 
-const languageOptions = [
-  { name: "Amharic", code: "am" },
-  { name: "Arabic", code: "ar" },
-  { name: "Chinese (Simplified)", code: "zh-CN" },
-  { name: "Chinese (Traditional)", code: "zh-TW" },
-  { name: "Czech", code: "cs" },
-  { name: "Danish", code: "da" },
-  { name: "Dutch", code: "nl" },
-  { name: "English", code: "en" },
-  { name: "Finnish", code: "fi" },
-  { name: "French", code: "fr" },
-  { name: "German", code: "de" },
-  { name: "Greek", code: "el" },
-  { name: "Hausa", code: "ha" },
-  { name: "Hindi", code: "hi" },
-  { name: "Hungarian", code: "hu" },
-  { name: "Igbo", code: "ig" },
-  { name: "Indonesian", code: "id" },
-  { name: "Italian", code: "it" },
-  { name: "Japanese", code: "ja" },
-  { name: "Korean", code: "ko" },
-  { name: "Nepali", code: "ne" },
-  { name: "Norwegian", code: "no" },
-  { name: "Polish", code: "pl" },
-  { name: "Portuguese", code: "pt" },
-  { name: "Romanian", code: "ro" },
-  { name: "Russian", code: "ru" },
-  { name: "Sinhala", code: "si" },
-  { name: "Slovak", code: "sk" },
-  { name: "Shona", code: "sn" },
-  { name: "Somali", code: "so" },
-  { name: "Spanish", code: "es" },
-  { name: "Swahili", code: "sw" },
-  { name: "Swedish", code: "sv" },
-  { name: "Thai", code: "th" },
-  { name: "Turkish", code: "tr" },
-  { name: "Ukrainian", code: "uk" },
-  { name: "Urdu", code: "ur" },
-  { name: "Vietnamese", code: "vi" },
-  { name: "Yoruba", code: "yo" },
-  { name: "Zulu", code: "zu" }
-];
+
 
 export default function HomePage() {
   const [languageCode, setLanguageCode] = useState("en");
@@ -52,26 +12,45 @@ export default function HomePage() {
   const [progress, setProgress] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedData, setTranslatedData] = useState<object | null>(null);
-  const [selectedLangName, setSelectedLangName] = useState("Chinese (Simplified)");
+  const [selectedLangName, setSelectedLangName] = useState("English");
   const [manualJson, setManualJson] = useState("");
   const [uploadedJson, setUploadedJson] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!languageOptions.length || !customLangCode.trim()) return;
+
     const match = languageOptions.find((lang) => lang.code === customLangCode.trim());
     if (match) {
-      setLanguageCode(match.code);
-      setSelectedLangName(match.name);
+      if (languageCode !== match.code) {
+        setLanguageCode(match.code);
+        setSelectedLangName(match.name);
+      }
+    } else {
+      if (languageCode !== "others") {
+        setLanguageCode(customLangCode);
+        setSelectedLangName("Others");
+      }
     }
-  }, [customLangCode]);
+  }, [customLangCode, languageOptions]);
 
+  // 🔁 Prevent loop: Only update customLangCode if it's different
   useEffect(() => {
-    const match = languageOptions.find((lang) => lang.code === languageCode);
+    if (!languageOptions.length || !languageCode.trim()) return;
+
+    const match = languageOptions.find((lang) => lang.code === languageCode.trim());
     if (match) {
-      setCustomLangCode(match.code);
-      setSelectedLangName(match.name);
+      if (customLangCode !== match.code) {
+        setCustomLangCode(match.code);
+        setSelectedLangName(match.name);
+      }
+    } else {
+      if (customLangCode !== "others") {
+        setCustomLangCode("others");
+        setSelectedLangName("Others");
+      }
     }
-  }, [languageCode]);
+  }, [languageCode, languageOptions]);
   async function translateNestedJson(
     obj: any,
     targetLang: string,
@@ -178,7 +157,7 @@ export default function HomePage() {
       <div className="bg-slate-800/90 p-8 rounded-3xl shadow-[0_0_25px_rgba(0,0,0,0.4)] w-full max-w-3xl border border-slate-700 backdrop-blur-sm">
         <div className="flex items-center justify-center gap-3 mb-8">
           <GlobeAltIcon className="w-9 h-9 text-indigo-400" />
-          <h1 className="text-4xl font-black text-indigo-300">JSON Translator</h1>
+          <h1 className="text-4xl font-black text-indigo-300">Global JSON Translator</h1>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-6">
