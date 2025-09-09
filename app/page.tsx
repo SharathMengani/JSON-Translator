@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { ArrowDownTrayIcon, GlobeAltIcon, DocumentArrowUpIcon } from "@heroicons/react/24/outline";
 import { languageOptions } from "./utils";
+import toast from "react-hot-toast";
 
 
 
@@ -11,7 +12,7 @@ export default function HomePage() {
   const [customLangCode, setCustomLangCode] = useState("");
   const [progress, setProgress] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
-  const [translatedData, setTranslatedData] = useState<object | null>(null);
+  const [translatedData, setTranslatedData] = useState<Record<string, unknown> | null>(null);
   const [selectedLangName, setSelectedLangName] = useState("English");
   const [manualJson, setManualJson] = useState("");
   const [uploadedJson, setUploadedJson] = useState("");
@@ -152,6 +153,30 @@ export default function HomePage() {
     setTranslatedData(null);
   };
 
+  const copyToClipboard = async (translatedData: Record<string, unknown> | null) => {
+    if (!translatedData) {
+      toast.error("No translated data to copy!");
+      return;
+    }
+
+    await toast.promise(
+      new Promise((resolve, reject) => {
+        setTimeout(() => {
+          navigator.clipboard.writeText(JSON.stringify(translatedData, null, 2))
+            .then(resolve)
+            .catch(reject);
+        }, 1000); // 👈 artificial delay
+      }),
+      {
+        loading: "Copying...",
+        success: "JSON copied",
+        error: "❌ Failed to copy.",
+      }
+    );
+  };
+
+
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white px-4 py-10 flex items-center justify-center font-sans">
       <div className="bg-slate-800/90 p-8 rounded-3xl shadow-[0_0_25px_rgba(0,0,0,0.4)] w-full max-w-3xl border border-slate-700 backdrop-blur-sm">
@@ -260,9 +285,10 @@ export default function HomePage() {
             />
 
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(JSON.stringify(translatedData, null, 2));
-              }}
+              // onClick={() => {
+              //   navigator.clipboard.writeText(JSON.stringify(translatedData, null, 2));
+              // }}
+              onClick={() => copyToClipboard(translatedData)}
               className="mt-2 bg-indigo-500 hover:bg-indigo-400 px-4 py-1 rounded text-sm text-white font-medium"
             >
               📋 Copy to Clipboard
